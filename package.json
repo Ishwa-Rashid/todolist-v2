@@ -1,0 +1,16 @@
+{
+  "name": "todolist-v2",
+  "version": "1.0.0",
+  "description": "Simple To Do List app",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Ishwa Rashid",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^1.20.2",
+    "express": "^4.18.2",
+    "lodash": "^4.17.21"
+  }
+}
