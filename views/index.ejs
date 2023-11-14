@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>To Do List</title>
+
+    <!-- External CSS -->
+    <link rel="stylesheet" href="/css/style.css">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans&display=swap" rel="stylesheet">
+    
+</head>
+<body>
+
+    <div class="box" id="heading">
+
+    <% if(listTitle == 'defaultList'){ %>
+        <h1> <%= currentDate %> </h1>
+    <% } else { %>
+        <h1> <%- capitalizeFirstLetter(listTitle) %> </h1>
+    <% } %>
+        
+    </div>
+    
+    <div class="box">
+
+    <% for (let i = 0; i < items.length; i++){ %>
+        <div class="item">
+            <input type="checkbox" name="" id="">  
+            <p> <%= items[i] %></p>
+        </div>
+    <% } %>
+        <form action="/" method="post">
+            <input type="text" name="newItem" placeholder="New Item" autocomplete="off">
+            <button type="submit" name="listName" value=<%=listTitle%> class="add-button">+</button>
+        </form>
+    </div>
+
+    <div class="new-list-container">
+        <button  type="button" class="new-list-button">Create New List</button>
+    </div>
+
+    <div class="name-form-container hidden">
+        <form action="/newList" method="post" class="name-form">
+            <input type="text" name="newListName" placeholder="List Name" autocomplete="off">
+            <button type="submit">Create</button>
+        </form>
+    </div>
+
+    <footer>Copyrights 2023 | Ishwa</footer>
+
+    <script src="/js/index.js"></script>
+</body>
+</html>
