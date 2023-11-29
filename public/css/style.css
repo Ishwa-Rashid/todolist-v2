@@ -207,7 +207,7 @@ p {
     cursor: pointer;
 }
 
-.registeration-form, .login-form {
+.registration-form, .login-form {
     font-family: inherit;
     width: 400px;
     border-radius: 5px;
@@ -224,7 +224,7 @@ p {
 
 }
 
-.registeration-form input, .login-form input {
+.registration-form input, .login-form input {
     text-align: center;
     height: 32px;
     width: 260px;
@@ -238,11 +238,11 @@ p {
 
 }
 
-.registeration-form input:focus, .login-form input:focus {
+.registration-form input:focus, .login-form input:focus {
     outline: none;
 }
 
-.registeration-form button, .login-form button {
+.registration-form button, .login-form button {
     background-color: #A683E3;
     font-family: inherit;
     font-size: 20px;
