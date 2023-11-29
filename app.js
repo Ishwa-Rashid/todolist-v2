@@ -72,6 +72,24 @@ app.get('/', function(req, res){
     })
 })
 
+app.get('/home', function(req, res){
+
+    res.render('home')
+})
+
+app.get('/register', function(req, res){
+
+    res.render('register')
+
+})
+
+app.get('/login', function(req, res){
+
+    res.render('login')
+
+})
+
+
 // can we use res.render() in post? if yes then why do we use redirect in post and get instead of render
 app.post('/', function(req, res){
     
