@@ -14,7 +14,7 @@ body {
 
 .box {
 
-    width: 400px;
+    min-width: 400px;
     border-radius: 5px;
     /* margin: 20px auto; */
     /* padding: 10px; */
@@ -72,9 +72,12 @@ p {
     font-size: 20px;
     font-weight: 400;
     color: #00204a;
+    /* flex-shrink: 0;  Prevents the paragraph from shrinking
+    word-wrap: break-word;  For legacy browsers 
+    overflow-wrap: break-word;  For modern browsers  */
 } 
 
-.box form {
+.new-items-form {
     text-align: center;
     margin-top: 20px;
     margin-bottom: 10px;
