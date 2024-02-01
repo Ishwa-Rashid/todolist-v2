@@ -1,43 +1,11 @@
 <%- include('partials/header') %>
 
-    <div class="box" id="heading">
+    <img src="images\note.png" alt="list-img" class="list-img">
 
-    <% if(listTitle == 'defaultList'){ %>
-        <h1> <%= currentDate %> </h1>
-    <% } else { %>
-        <h1> <%- capitalizeFirstLetter(listTitle) %> </h1>
-    <% } %>
-        
-    </div>
-    
-    <div class="box">
+    <a href="/register" role="button" class="home-page-button">Register</a>
 
-    <% for (let i = 0; i < items.length; i++){ %>
-        <form action="/delete" method="post">
-            <div class="item">
-                <input type="checkbox" name="checkbox" value ="<%= items[i]._id %>" onchange="this.form.submit()">  
-                <p> <%= items[i].itemName %></p>
-                <input type="hidden" name="listName" value=<%=listTitle%>>
-            </div>
-        </form>
-        
-    <% } %>
-        <form action="/" method="post" class="new-items-form">
-            <input type="text" name="newItem" placeholder="New Item" autocomplete="off">
-            <button type="submit" name="listName" value=<%=listTitle%> class="add-button">+</button>
-        </form>
-    </div>
 
-    <div class="new-list-container">
-        <button  type="button" class="new-list-button">Create New List</button>
-    </div>
+    <a href="/login" role="button" class="home-page-button">Login</a>
 
-    <div class="name-form-container hidden">
-        <form action="/newList" method="post" class="name-form">
-            <input type="text" name="newListName" placeholder="List Name" autocomplete="off">
-            <button type="submit">Create</button>
-        </form>
-    </div>
 
 <%- include('partials/footer') %>
-
