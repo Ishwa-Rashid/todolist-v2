@@ -1,30 +1,43 @@
 const express = require('express')
 const mongoose = require('mongoose')
 const bodyParser = require('body-parser')
+const ejs = require('ejs');
 const _ = require('lodash')
-const itemAndList = require('./Item')
-const Item = itemAndList.itemModel
-const List = itemAndList.listModel
-const User = require('./User')
-const session = require('express-session')
-const passport = require('passport')
-const passportLocalMongoose = require('passport-local-mongoose')
-
+const {Item, List, User} = require('./models')
+const passport = require('passport');
+const {Strategy} = require('passport-local');
+const session = require('express-session');
+const bcrypt = require('bcrypt')
+const saltRounds = 10
 
 const app = express()
 
 app.use(express.static('public'))
 app.use(express.json())
-app.use(express.urlencoded({ extended: true }))
+app.use(express.urlencoded({extended: true}))
 
+// getting our app to use express session
 app.use(session({
     secret: 'This is our little secret',
     resave: false,
     saveUninitialized: true,
+    cookie: {
+        secure: false, // set to true if your app is served over HTTPS
+        httpOnly: true,
+        expires: false, // session cookie, expires when the browser is closed
+    },
 }))
 
-app.use(passport.initialize())
+// app.use(session({
+//     secret: 'keyboard cat',
+//     resave: false,
+//     saveUninitialized: true,
+//     cookie: { secure: true }
+// }))
+
+app.use(passport.initialize());
 app.use(passport.session())
+
 
 app.set("view engine", "ejs")
 
@@ -39,15 +52,51 @@ const options = {
 
 const currentDate = today.toLocaleDateString("en-US", options)
 
-
 // To capitalize list tile inside index template
 const capitalizeFirstLetter = (string) => {
     return _.upperFirst(string);
 };
 
-
 // Database Connection
 mongoose.connect('mongodb://127.0.0.1:27017/todolistDB')
+
+// compare password
+function comparePassword(password, hashed){
+
+    return bcrypt.compareSync(password, hashed);
+}
+
+// passport config
+passport.use(new Strategy(
+    async function(username, password, done) {
+        try{
+            const user = await User.findOne({ email: username })
+            
+            if(!user) return done(null, false);
+            if(!comparePassword(password, user.password)) return done(null, false);
+            return done(null, user);
+
+        } catch(error){
+            return done(error, false);
+        }
+
+        
+    }
+));
+
+passport.serializeUser(function(user, done) {
+    done(null, user.id);
+});
+  
+passport.deserializeUser(async (id, done) => {
+	try {
+		const findUser = await User.findById(id);
+		if (!findUser) throw new Error("User Not Found");
+		done(null, findUser);
+	} catch (err) {
+		done(err, null);
+	}
+});
 
 // default items
 const item1 = new Item({
@@ -64,18 +113,26 @@ const item3 = new Item({
 const defaultItems = [item1, item2, item3]
 
 
-async function saveDefaultItems(){
 
-    await Item.insertMany(defaultItems)
-    console.log("Inserted Successfully!")
-}
+app.get('/home', async function(req, res){
 
-passport.use(User.createStrategy());
-
-passport.serializeUser(User.serializeUser());
-passport.deserializeUser(User.deserializeUser());
-
-
+    if(req.isAuthenticated()){
+        const user = await User.findById(req.user._id)
+            if(user.items.length === 0){
+                
+                user.items.push(...defaultItems)
+                await user.save();
+                res.redirect('/home')
+            } else {
+    
+                res.render('home', {currentDate: currentDate, listTitle:"defaultList", items: user.items})
+            }
+        
+    } else {
+        res.redirect("/login");
+    }
+    
+})
 
 app.get('/', function(req, res){
 
@@ -95,172 +152,184 @@ app.get('/login', function(req, res){
 })
 
 app.get("/logout", function(req, res){
-
-    req.logout();
-    res.redirect("/");
+    req.logout(function(err) {
+        if (err) { return next(err); }
+        res.redirect('/');
+    });
 })
 
-app.get('/home', function(req, res){
-
-    // console.log("else")
-    if(req.isAuthenticated()){
-        
-        Item.find().then(function(foundItems){
-            if(foundItems.length === 0){
-                saveDefaultItems();
-                res.redirect('/home')
-            } else {
-    
-                res.render('home', {currentDate: currentDate, listTitle:"defaultList", items: foundItems})
-            }
-    
-        })
-
-    } else {
-
-        res.redirect('/login')
-    }
-
-})
-
-app.post('/register', function(req, res){
-
-    User.register({username: req.body.username}, req.body.password, function(err, user){
-        if(err){
-            console.log(err)
-            res.render('register')
-        } else {
-            passport.authenticate('local')(req, res, function(){
-    
-                res.redirect('/home')
-            })
-        }
-    })
-
-})
-
-app.post('/login', function(req, res){
-
-    const username = req.body.username;
-    const password = req.body.password;
-
-    const user = new User({
-        username: username,
-        password: password
-    })
-
-    req.login(user, function(err){
-        if(err){
-            console.log(err)
-            res.redirect('/register')
-        } else {
-            passport.authenticate('local')(req, res, function(){
-                res.redirect('/home')
-            })
-        }
-    })
-
-
-})
 
 // can we use res.render() in post? if yes then why do we use redirect in post and get instead of render
-app.post('/', function(req, res){
+app.post('/home', async function(req, res){
+
+    if(req.isAuthenticated()){
+
+        const newItem = req.body.newItem
+        const listName = req.body.listName
+        // console.log("listname: " + listName);
     
-    const newItem = req.body.newItem
-    const listName = req.body.listName
-
-    const item = new Item({
-        itemName: newItem
-    })
-
-    if(newItem != ''){
-        if(listName == 'defaultList'){
-            item.save().then(function(){
-                res.redirect('/')
-            })
-        } else {
-
-            List.findOne({listName: listName}).then(function(foundList){
-                foundList.listItems.push(item)
-                foundList.save().then( function(){
-                res.redirect('/lists/' + listName)
-
-                })
-            })
-
-        }
-    }
-})
-
-app.post('/delete', function(req, res){
-    const itemID = req.body.checkbox
-    console.log(itemID)
-    const listName = req.body.listName
-    if(listName === 'defaultList'){
-        Item.findByIdAndDelete(itemID).then(function(){
-            res.redirect('/home')
-
+        const item = new Item({
+            itemName: newItem
         })
+    
+        const foundUser = await User.findById(req.user._id);    
+        if(newItem != ''){
+            if(listName == 'defaultList'){
+                foundUser.items.push(item)
+                foundUser.save().then(function(){
+                    res.redirect('/home')
+                })
+            } else {
+    
+                const list = foundUser.lists.find(function(list){
+                    return list.listName === listName
+                })
+                list.listItems.push(item);
+                foundUser.save().then( function(){
+                    res.redirect('/lists/' + listName)
+                })
+            }
+        }
 
     } else {
 
-        List.findOne({listName: listName}).then(function(foundList){
-            foundList.listItems.pull(itemID)
-            foundList.save().then(function(){
-                console.log("saved")
-                res.redirect('/lists/' + listName)
-            })
-        })
+        res.redirect("/login")
     }
-   
+
 })
 
-app.post('/newList', function(req, res){
-    // can use custom list 
-    const newListName = _.lowerCase(req.body.newListName)
+app.post('/delete', async function(req, res){
 
-    async function saveDefaultItems(){
-
-        await Item.insertMany(defaultItems)
-        console.log("Inserted Successfully!")
-    }
+    if(req.isAuthenticated()){
+        const itemID = req.body.checkbox
+        const listName = req.body.listName
+        const userId = req.user._id;
     
-    List.findOne({listName: newListName}).then(function(foundList){
-        if( foundList === null){
+    
+        if(listName === 'defaultList'){   
+            const updatedUser = await User.findByIdAndUpdate(
+                userId,
+                { $pull: { items: { _id: itemID } } },
+                { new: true }
+            );
+            
+            res.redirect('/home')
+            
+        } else {
+    
+            const updatedUser = await User.findOneAndUpdate(
+                { _id: userId, 'lists.listName': listName },
+                { $pull: { 'lists.$.listItems': { _id: itemID } } },
+                { new: true }
+            );
+    
+            
+             res.redirect('/lists/' + listName)
+            
+        } 
+    } else {
+        res.redirect("/login");
+    }
+ 
+})
+
+app.post('/newList', async function(req, res){
+
+    if(req.isAuthenticated()){
+        // can use custom list 
+        const newListName = _.lowerCase(req.body.newListName)
+
+
+        const foundUser = await User.findById(req.user._id); 
+
+
+        if(foundUser.lists.length !== 0){ 
+
+            const foundList = foundUser.lists.find(function(list){
+                return list.listName === newListName
+            })
+
+            if( foundList === undefined ){
+                const list = new List({
+                    listName: newListName,
+                    listItems: defaultItems
+                })
+        
+                foundUser.lists.push(list);
+                foundUser.save().then(function(){
+        
+                    console.log("List Created Sucessfully!")
+                })
+            }
+        } else {
+
             const list = new List({
                 listName: newListName,
                 listItems: defaultItems
             })
-
-            list.save().then(function(){
-
+        
+            foundUser.lists.push(list);
+        
+        
+            foundUser.save().then(function(){
+        
+                console.log("List Created Sucessfully!")
             })
+
         }
 
         res.redirect('/lists/' + newListName)
-    })
+    } else {
+        res.redirect("login")
+    }
 
+    
 })
 
-app.get('/lists/:newListName', function(req,res){
+app.get('/lists/:newListName', async function(req,res){
 
     if(req.isAuthenticated()){
-
         const requestedList = _.lowerCase(req.params.newListName)
 
-        List.findOne({listName: requestedList}).then(function(foundList){
-    
-            res.render('home',{capitalizeFirstLetter: capitalizeFirstLetter, listTitle: foundList.listName, items: foundList.listItems});
+        const foundUser = await User.findById(req.user._id);
+
+        const foundList = foundUser.lists.find(function(list){
+            return list.listName === requestedList
         })
+         res.render('Home',{capitalizeFirstLetter: capitalizeFirstLetter, listTitle: foundList.listName, items: foundList.listItems});  
 
     } else {
 
-        res.redirect('/login')
+        res.redirect("login")
     }
 
 })
-  
 
+
+app.post("/register", async function(req,res){
+    const username = req.body.username;
+    const password = req.body.password;
+
+    const userFound = await User.findOne({email: username})
+    if(userFound){
+        return res.redirect('login')
+    }
+
+    const hash = bcrypt.hashSync(password, saltRounds);
+
+    const user = {
+        email: username,
+        password: hash
+    }
+    const newUser = await User.create(user);
+
+    passport.authenticate('local')(req, res, function(){
+        res.redirect("/home");
+    });
+
+});
+
+app.post("/login", passport.authenticate("local", {failureRedirect: "/register", successRedirect: "/home"}));
 
 app.listen(3000, function(){
     console.log("Server is listening on port 3000")
@@ -268,9 +337,8 @@ app.listen(3000, function(){
 
 
 
-
-
-
 // Issues
 // cant handle lists that are of more then one word
 // cant handle  kebab casing
+// if we create list consisting of two word it will only get first word of the list name
+// in the post route "/home", where we are adding new list items
